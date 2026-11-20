@@ -18,8 +18,9 @@ import json
 import math
 import sys
 from datetime import date, datetime, time, timedelta, timezone
-from urllib.request import Request, urlopen
 from zoneinfo import ZoneInfo
+
+from .smard_transport import PilotUnavailable, fetch_public_smard_json
 
 BASE = 'https://www.smard.de/app/chart_data'
 LOCAL = ZoneInfo('Europe/Berlin')
@@ -28,10 +29,6 @@ FILTER_RENEWABLES = 5097         # Forecast wind + solar; team notebook identifi
 REGION = 'DE'
 RESOLUTION = 'hour'
 MAX_PACKAGES = 4
-
-
-class PilotUnavailable(ValueError):
-    """Input validation failed; no forecast or fallback may be published."""
 
 
 def daily_hours_utc(day: date) -> list[datetime]:
@@ -54,18 +51,9 @@ def smard_json(path: str) -> dict:
     allowed = (f'/{FILTER_LOAD}/DE/', f'/{FILTER_RENEWABLES}/DE/')
     if not path.startswith(allowed) or not path.endswith('.json'):
         raise PilotUnavailable('SMARD request not allowlisted')
-    req = Request(BASE + path, headers={
-        'Accept': 'application/json',
-        'User-Agent': 'GridStress-research-preflight/0.1 (read-only)',
-    })
-    with urlopen(req, timeout=20) as response:
-        data = response.read(5_000_001)
-    if len(data) > 5_000_000:
-        raise PilotUnavailable('oversized SMARD response')
-    result = json.loads(data)
-    if not isinstance(result, dict):
-        raise PilotUnavailable('invalid SMARD JSON object')
-    return result
+    return fetch_public_smard_json(
+        path, user_agent="GridStress-research-preflight/0.1 (read-only)"
+    )
 
 
 def fetch_forecast_series(filter_id: int, hours: list[datetime], get_json=smard_json) -> dict[datetime, float]:
