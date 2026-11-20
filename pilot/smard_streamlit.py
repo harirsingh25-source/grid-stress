@@ -25,6 +25,7 @@ if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
 from pilot.smard_daily_pilot import LOCAL, PilotUnavailable, build_preview
+from pilot.ridge_readiness import readiness_report
 from pilot.smard_historical_snapshot import build_historical_snapshot
 from pilot.team_credits import (
     ORIGINAL_TEAM_MEMBERS, ORIGINAL_TEAM_REPOSITORY, PERSONAL_RESEARCH_FORK,
@@ -124,6 +125,33 @@ if view == "Tomorrow's SMARD input preview":
     metric_load.metric("SMARD load inputs", f"{len(tomorrow_frame)}/{len(tomorrow_frame)}")
     metric_wind.metric("SMARD wind + solar inputs", f"{len(tomorrow_frame)}/{len(tomorrow_frame)}")
     metric_ensemble.metric("GridStress ensemble", "Not available")
+    
+    st.subheader("Original Ridge model · feature readiness")
+    try:
+        ridge = readiness_report(preview)
+        n_available = len(ridge["available_feature_names"])
+        st.metric("Verified feature availability (not an ML forecast)",
+                  f"{n_available} / {ridge['feature_total']}")
+        st.caption(
+            f"Saved team Ridge configuration: alpha={ridge['saved_alpha']:.2g}. "
+            "The original team model requires historical actuals, forecast errors "
+            "and capacity with correct issue-time provenance. A trained Ridge "
+            "estimator and ensemble predictions are **not available**."
+        )
+        with st.expander("Inspect the seven missing Ridge-model inputs"):
+            st.dataframe(
+                pd.DataFrame(ridge["unavailable_features"]),
+                hide_index=True,
+                use_container_width=True,
+            )
+            st.caption(
+                "Original Ridge training protocol, source vintages, DST "
+                "alignment and prediction validation must be reproduced "
+                "before any model result can be displayed."
+            )
+    except (PilotUnavailable, OSError, ValueError, KeyError) as exc:
+        st.warning(f"Original Ridge readiness cannot be verified: {exc}")
+
 
     day_fig = go.Figure()
     for column, name, color in [
