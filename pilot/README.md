@@ -68,6 +68,90 @@ Then visit the loopback URL printed by Streamlit (typically http://localhost:850
 
 **Not a historical forecast-vintage archive:** the current SMARD API can return revised values. The page describes a *historical input preview*; no claims of backtested skill, operational grid risk, a 2026-11-21 model forecast, or daily automatic service are supported.
 
+## First full original Ridge feature-table prototype (current API snapshots ONLY)
+
+**Exact verified starting point:** on **20 November 2026**, the owner
+fast-forwarded the pilot branch to `d31c6c099aad5c4e410474577b54c5b0be81fc7d`.
+The owner Mac confirmed **37/37 offline tests passing** and received
+all **49 historical residual-load observations** from the live SMARD API
+for delivery **21 November 2026**. The current-source actuals retrieval
+was at 19:43 CET, **after** the original 16:00 information cutoff.
+These observations are **not** historically as-of certified.
+
+The new `pilot/ridge_feature_snapshot.py` goes beyond the coverage
+check and reconstructs the **13 numeric columns of the original team
+Ridge direct input schema**, using the source identifiers in the team's
+`notebooks/API-connection.ipynb` and formulas in its modeling and
+forecast-metrics notebooks:
+
+- **6 calendar + target-forecast inputs:** hour, weekday, month,
+  weekend, target SMARD grid load, target SMARD wind+solar;
+- **1 nationwide German holiday flag:** independent deterministic
+  calendar; equivalence to the team's `holidays.country_holidays("DE")`
+  is **not yet certified**;
+- **3 observed residual inputs:** same-local-hour `DAY−2` and
+  `DAY−7`, plus the 15:00 residual actual on the issue day;
+- **2 recent forecast-error inputs:** the preceding 24 complete hours
+  ending at issue-day 15:00, using `forecast − actual` for grid load
+  and wind+solar, as in the original team's sign convention;
+- **1 published installed capacity input:** onshore+offshore wind and
+  solar from the issue-year 1 January through the issue-day probes.
+  This spot check cannot prove complete historical publication vintage.
+
+The adapter is deliberately restricted to **ordinary 24-hour target
+and history days** until the team's naive local-time timestamp
+semantics across DST have been reproduced exactly. It rejects missing,
+duplicate, nonfinite, negative physical component inputs, inconsistent
+capacity probes and unsupported URL paths. The main script uses
+read-only requests with small bounded weekly-package windows.
+
+**Run locally on the Mac**, after 18:15 Berlin time on the day before
+the target day (example specifically for Friday 20 Nov 2026):
+
+    cd "$HOME/Repositories/grid-stress"
+    git pull --ff-only origin feature/live-smard-ensemble-pilot-20261120
+    python3 -m unittest discover -s tests -v
+    python3 -m pilot.ridge_feature_snapshot --delivery-date 2026-11-21
+
+To **opt in** to a local immutable research snapshot, run the same
+command with `--save-local`:
+
+    python3 -m pilot.ridge_feature_snapshot --delivery-date 2026-11-21 --save-local
+
+The second command writes one original, owner-readable JSON file under
+`pilot/snapshots/` with a SHA-256 receipt; `pilot/.gitignore`
+excludes these snapshots from version control. Overwriting the same
+snapshot is not allowed. No capture is scheduled, uploaded, publicly
+linked or deployed; snapshots accumulate only on a deliberately
+invoked local run. Output preserves the source and capture timestamp,
+forecast issue and cutoff, source input values and model identity.
+
+**Scientific status stays blocked:** even with all 13 finite numerical
+feature values, `status=RIDGE_13_FEATURES_CURRENT_SNAPSHOT_UNVERIFIED`,
+`historical_actuals_as_of_cutoff_verified=false`,
+`forecast_issue_vintage_verified=false`,
+`capacity_publication_vintage_verified=false`,
+`holiday_calendar_equivalence_verified=false`,
+`trained_ridge_estimator_available=false`,
+`ridge_predictions=null`, `ensemble_predictions=null`, and
+`safe_to_publish=false`. This prototype uses currently served
+SMARD values, which can be revised or published after the
+information cutoff; **it is not a trustworthy point-in-time
+backtest or a trained model forecast**.
+
+The next required work is source-vintage receipts at the actual
+issuance time, reconstruction of the original full historical training
+frame, 36-month training window, seven-day refit and strictly held-out
+validation; only then may actual Ridge inference be privately compared
+with SMARD. The other five fitted models and regime-weighted ensemble
+must independently pass the same evidence gates.
+
+**New test receipt status:** 11 synthetic feature-extraction tests plus
+6 immutable-capture tests have been added on top of the last 37
+owner-verified tests. **54 are expected but have not yet been executed
+on this draft head**. Do not mistake static GitHub code review
+for a passing Python suite or an end-to-end model run.
+
 ## Original SMARD residual-load actuals: coverage preflight (new, read-only)
 
 **Verified user Mac receipt (20 November 2026):** the exact previous
