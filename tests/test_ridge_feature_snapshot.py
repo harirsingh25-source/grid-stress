@@ -110,6 +110,15 @@ class RidgeFullFeatureTests(unittest.TestCase):
         self.assertFalse(result["capacity_publication_vintage_verified"])
         self.assertFalse(result["holiday_calendar_equivalence_verified"])
 
+    def test_january_first_target_uses_prior_issue_year_capacity(self):
+        target = date(2027, 1, 1)
+        data = current_feature_snapshot(fake_preview(target), fake_smard_json())
+        self.assertEqual(data["delivery_date"], "2027-01-01")
+        self.assertEqual(data["feature_rows"][0]["holiday"], 1.0)
+        # Original team uses capacity published by the PREVIOUS-DAY 18:00
+        # issue time, so a Jan 1 delivery cannot use Jan 1 new-year capacity.
+        self.assertEqual(data["feature_rows"][0]["cap_total"], 170000.0)
+
     def test_negative_observed_residual_allowed(self):
         result = current_feature_snapshot(fake_preview(), fake_smard_json(neg_residual=True))
         self.assertEqual(result["feature_rows"][0]["rl_lag_48h"], -250)
