@@ -9,6 +9,7 @@ disabled. No persistent cache, scheduler, uploads, or publication.
 from __future__ import annotations
 
 import json
+import re
 import socket
 from time import sleep
 from urllib.error import HTTPError, URLError
@@ -33,15 +34,14 @@ def fetch_public_smard_json(path: str, *, user_agent: str, max_bytes: int = 5_00
 
     A caller must also enforce its *filter-specific* path allowlist.
     """
+    if not isinstance(path, str) or len(path) > 180:
+        raise PilotUnavailable("unsafe SMARD HTTPS request")
+    match = re.fullmatch(
+        r"/([0-9]+)/DE/(?:index_hour|([0-9]+)_DE_hour_[0-9]+)\\.json", path
+    )
     if (
-        not isinstance(path, str)
-        or not path.startswith("/")
-        or ".." in path
-        or "?" in path
-        or "#" in path
-        or "\\" in path
-        or not path.endswith(".json")
-        or len(path) > 180
+        match is None
+        or (match.group(2) is not None and match.group(2) != match.group(1))
         or type(max_bytes) is not int
         or not 1 <= max_bytes <= 5_000_000
     ):
