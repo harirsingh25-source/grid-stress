@@ -49,7 +49,7 @@ source archives rather than compiling native dependencies:
     ./.venv/bin/python -m pip install --upgrade pip
     ./.venv/bin/python -m pip install --only-binary=:all: "pyarrow==17.0.0" "streamlit==1.67.0" "pandas==3.1.1" "plotly==7.1.0"
     ./.venv/bin/python -m pip check
-    ./.venv/bin/streamlit run pilot/smard_streamlit.py
+    ./.venv/bin/streamlit run pilot/smard_streamlit.py --server.address 127.0.0.1
 
 If no compatible wheel is found, **stop** and report
 `sw_vers -productVersion`, `uname -m` and `./.venv/bin/python -V`
@@ -67,6 +67,42 @@ its package install, import, launch and first browser rendering succeed.
 Then visit the loopback URL printed by Streamlit (typically http://localhost:8501). Select a completed historical day such as 2026-11-19 and click **Fetch SMARD historical inputs**. The explorer prints source provenance, UTC acquisition time, full-hour coverage, interactive Plotly lines, an hourly table and an optional CSV download. Only the deliberate button click fetches data, with a ten-minute cache. Streamlit's port remains local unless you deliberately configure network access. Keep it local-only for this pilot.
 
 **Not a historical forecast-vintage archive:** the current SMARD API can return revised values. The page describes a *historical input preview*; no claims of backtested skill, operational grid risk, a 2026-11-21 model forecast, or daily automatic service are supported.
+
+## Original four-person team credit and import fix (20 Nov 2026)
+
+The canonical original Streamlit `streamlit/app_pages/about.py` lists
+the **four human team members** as **Robert, Marco, Hari and Monica**.
+The independent pilot displays these names prominently at the top
+(before any data fetch), links to the [original team capstone](https://github.com/fruchtgummikauer/grid-stress),
+and separately identifies Hari's research fork. It never represents
+the other three team members as authors or approvers of the new pilot.
+Only the first names supplied by the original team are used; surnames are
+not invented. The original team app's own `Who are we?` page remains intact.
+
+The first user browser launch succeeded in installing Streamlit but hit
+`ModuleNotFoundError: No module named 'pilot'`. Streamlit's script runner
+did not include the repository root on the Python import path. The pilot
+entrypoint now derives that root from its own source file and inserts it
+before package imports. This is contained to the pilot app.
+
+To pick up the fix, stop the existing local Streamlit process with
+**Ctrl+C**, then use these commands from the repository root:
+
+    git pull --ff-only origin feature/live-smard-ensemble-pilot-20261120
+    python3 -m unittest discover -s tests -v
+    ./.venv/bin/streamlit run pilot/smard_streamlit.py --server.address 127.0.0.1
+
+Open `http://127.0.0.1:8501` in your browser. The explicit
+`--server.address 127.0.0.1` binds the preview to the Mac itself
+rather than exposing the port to other devices on the local network,
+which is important because the earlier default server log displayed
+a LAN Network URL. No reinstall or new service is needed if
+`pip check` already passed.
+
+**Verification status:** User Mac reported 14/14 pre-fix tests green and
+successful Streamlit package installation, but a browser import failure.
+The 3 new import/credit contract tests and successful post-fix browser
+render still require a local rerun. Do not call the UI verified until then.
 
 ## Limits to understand before going live
 
