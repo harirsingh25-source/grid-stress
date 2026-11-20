@@ -37,7 +37,7 @@ def fetch_public_smard_json(path: str, *, user_agent: str, max_bytes: int = 5_00
     if not isinstance(path, str) or len(path) > 180:
         raise PilotUnavailable("unsafe SMARD HTTPS request")
     match = re.fullmatch(
-        r"/([0-9]+)/DE/(?:index_hour|([0-9]+)_DE_hour_[0-9]+)\\.json", path
+        r"/([0-9]+)/DE/(?:index_hour|([0-9]+)_DE_hour_[0-9]+)\.json", path
     )
     if (
         match is None
