@@ -14,7 +14,8 @@ from time import sleep
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
-from .smard_daily_pilot import PilotUnavailable
+class PilotUnavailable(ValueError):
+    """Source data or transport is unavailable; do not publish or substitute."""
 
 BASE = "https://www.smard.de/app/chart_data"
 MAX_ATTEMPTS = 2
