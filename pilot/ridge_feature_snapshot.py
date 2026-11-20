@@ -18,10 +18,11 @@ import math
 import re
 import sys
 from datetime import date, datetime, time, timedelta, timezone
+from functools import lru_cache
 from pathlib import Path
-from urllib.request import Request, urlopen
 
 from .ridge_readiness import EXPECTED_FEATURES, PilotUnavailable, readiness_report
+from .smard_transport import fetch_public_smard_json
 from .smard_actuals_preflight import required_actual_hours
 from .smard_daily_pilot import LOCAL, build_preview, daily_hours_utc
 
@@ -52,18 +53,9 @@ def fetch_json(path: str) -> dict:
     token = match.group(2)
     if token != "index_hour" and not token.startswith(f"{match.group(1)}_DE_hour_"):
         raise PilotUnavailable("SMARD package filter mismatch")
-    request = Request(
-        BASE + path,
-        headers={"Accept": "application/json", "User-Agent": "GridStress-ridge-research/0.1"},
+    return fetch_public_smard_json(
+        path, user_agent="GridStress-ridge-research/0.1", max_bytes=MAX_BYTES
     )
-    with urlopen(request, timeout=20) as response:
-        body = response.read(MAX_BYTES + 1)
-    if len(body) > MAX_BYTES:
-        raise PilotUnavailable("oversized SMARD feature response")
-    value = json.loads(body)
-    if not isinstance(value, dict):
-        raise PilotUnavailable("invalid SMARD feature response")
-    return value
 
 
 def fetch_exact_hours(filter_id: int, requested: set[datetime], get_json=fetch_json) -> dict:
@@ -176,14 +168,21 @@ def current_feature_snapshot(preview: dict, get_json=fetch_json, holiday_check=n
     if len(recent_hours) != 24:
         raise PilotUnavailable("recent forecast-error window malformed")
 
+    # One small, run-local cache per feature snapshot. Avoid redownloading
+    # the same weekly package/index for repeated capacity-hour probes.
+    # Never persist this cache across separate captures or application runs.
+    @lru_cache(maxsize=64)
+    def get_once(path: str) -> dict:
+        return get_json(path)
+
     actual_needed = set().union(*(set(v) for v in lag_map.values()))
-    residual = fetch_exact_hours(FILTERS["residual"], actual_needed, get_json)
-    grid_actual = fetch_exact_hours(FILTERS["grid_actual"], recent_hours, get_json)
-    wind_off = fetch_exact_hours(FILTERS["wind_off_actual"], recent_hours, get_json)
-    wind_on = fetch_exact_hours(FILTERS["wind_on_actual"], recent_hours, get_json)
-    solar = fetch_exact_hours(FILTERS["solar_actual"], recent_hours, get_json)
-    grid_forecast = fetch_exact_hours(FILTERS["grid_forecast"], recent_hours, get_json)
-    wind_solar_forecast = fetch_exact_hours(FILTERS["wind_solar_forecast"], recent_hours, get_json)
+    residual = fetch_exact_hours(FILTERS["residual"], actual_needed, get_once)
+    grid_actual = fetch_exact_hours(FILTERS["grid_actual"], recent_hours, get_once)
+    wind_off = fetch_exact_hours(FILTERS["wind_off_actual"], recent_hours, get_once)
+    wind_on = fetch_exact_hours(FILTERS["wind_on_actual"], recent_hours, get_once)
+    solar = fetch_exact_hours(FILTERS["solar_actual"], recent_hours, get_once)
+    grid_forecast = fetch_exact_hours(FILTERS["grid_forecast"], recent_hours, get_once)
+    wind_solar_forecast = fetch_exact_hours(FILTERS["wind_solar_forecast"], recent_hours, get_once)
 
     errors_load = [
         grid_forecast[h] - grid_actual[h] for h in sorted(recent_hours)
