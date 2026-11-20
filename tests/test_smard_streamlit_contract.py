@@ -47,6 +47,31 @@ class StreamlitContractTests(unittest.TestCase):
         self.assertEqual(ORIGINAL_TEAM_REPOSITORY, "https://github.com/fruchtgummikauer/grid-stress")
         self.assertEqual(PERSONAL_RESEARCH_FORK, "https://github.com/harirsingh25-source/grid-stress")
 
+    def test_tomorrow_view_uses_only_guarded_preflight_after_1815(self):
+        source = APP.read_text(encoding="utf-8")
+        self.assertIn("Tomorrow's SMARD input preview", source)
+        self.assertIn("local_now.time() < time(18, 15)", source)
+        self.assertIn("build_preview(next_day, datetime.now(timezone.utc))", source)
+        self.assertIn("st.button(\"Fetch tomorrow's SMARD input snapshot\"", source)
+        self.assertLess(
+            source.index('if not st.button("Fetch tomorrow'),
+            source.index("build_preview(next_day"),
+        )
+        self.assertIn("source_vintage_verified", source)
+        self.assertIn("public_release_authorized", source)
+        self.assertIn('preview.get("model_inference") != "NOT_AVAILABLE"', source)
+        self.assertIn('preview.get("ensemble_forecast") is not None', source)
+
+    def test_original_historical_view_kept_and_pilot_does_not_schedule(self):
+        source = APP.read_text(encoding="utf-8")
+        self.assertIn('st.button("Fetch SMARD historical inputs"', source)
+        self.assertIn("build_historical_snapshot(", source)
+        self.assertIn("HISTORICAL_COMPONENT_PREVIEW_ONLY", (
+            ROOT / "pilot/smard_historical_snapshot.py"
+        ).read_text(encoding="utf-8"))
+        self.assertNotIn("st_autorefresh", source)
+        self.assertNotIn("scheduler.add_job", source)
+
 
 if __name__ == "__main__":
     unittest.main()
