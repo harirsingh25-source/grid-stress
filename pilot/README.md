@@ -49,7 +49,7 @@ source archives rather than compiling native dependencies:
     ./.venv/bin/python -m pip install --upgrade pip
     ./.venv/bin/python -m pip install --only-binary=:all: "pyarrow==17.0.0" "streamlit==1.67.0" "pandas==3.1.1" "plotly==7.1.0"
     ./.venv/bin/python -m pip check
-    ./.venv/bin/python -m streamlit run pilot/smard_streamlit.py
+    ./.venv/bin/streamlit run pilot/smard_streamlit.py
 
 If no compatible wheel is found, **stop** and report
 `sw_vers -productVersion`, `uname -m` and `./.venv/bin/python -V`
