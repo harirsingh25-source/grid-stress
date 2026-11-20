@@ -41,8 +41,8 @@ EXPECTED_FEATURES = (
 # These cannot be inferred from just tomorrow's two forecast series.
 MISSING_DEPENDENCIES = {
     "holiday": "German nationwide public-holiday calendar, consistent with the original holidays library",
-    "rl_lag_48h": "historical observed residual load exactly 48 physical hours before each target hour",
-    "rl_lag_168h": "historical observed residual load exactly 168 physical hours before each target hour",
+    "rl_lag_48h": "observed residual load at target timestamp minus 48h in original local-time index convention; DST alignment must be checked",
+    "rl_lag_168h": "observed residual load at target timestamp minus 168h in original local-time index convention; DST alignment must be checked",
     "rl_last_available": "last residual-load actual published by the previous-day 16:00 cutoff (hour ending 16:00)",
     "err_grid_load_recent": "24h rolling mean of eligible historical SMARD load forecast errors as of issue cutoff",
     "err_renewables_recent": "24h rolling mean of eligible historical SMARD renewables forecast errors as of issue cutoff",
@@ -148,7 +148,7 @@ def readiness_report(snapshot: dict, contract: dict | None = None) -> dict:
         "ensemble_predictions": None,
         "safe_to_publish": False,
         "next_step": (
-            "Reconstruct all missing issue-time features from published historical "
+            "Reconstruct and verify missing issue-time features from historical "
             "records and original training logic; fit and independently validate "
             "the original Ridge pipeline before forecasting."
         ),
