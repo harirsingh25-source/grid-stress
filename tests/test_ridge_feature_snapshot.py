@@ -119,6 +119,22 @@ class RidgeFullFeatureTests(unittest.TestCase):
         # issue time, so a Jan 1 delivery cannot use Jan 1 new-year capacity.
         self.assertEqual(data["feature_rows"][0]["cap_total"], 170000.0)
 
+    def test_repeat_weekly_indexes_and_packages_are_fetched_once_per_run(self):
+        delegate = fake_smard_json()
+        calls = []
+
+        def tracked(path):
+            calls.append(path)
+            return delegate(path)
+
+        result = current_feature_snapshot(fake_preview(), tracked)
+        self.assertEqual(result["hour_count"], 24)
+        self.assertGreater(len(calls), 10)
+        self.assertEqual(
+            len(calls), len(set(calls)),
+            "identical SMARD weekly index or package was fetched more than once",
+        )
+
     def test_negative_observed_residual_allowed(self):
         result = current_feature_snapshot(fake_preview(), fake_smard_json(neg_residual=True))
         self.assertEqual(result["feature_rows"][0]["rl_lag_48h"], -250)
