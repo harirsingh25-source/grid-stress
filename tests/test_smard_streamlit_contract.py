@@ -72,6 +72,16 @@ class StreamlitContractTests(unittest.TestCase):
         self.assertNotIn("st_autorefresh", source)
         self.assertNotIn("scheduler.add_job", source)
 
+    def test_tomorrow_ui_discloses_ridge_missing_features_without_fake_model(self):
+        source = APP.read_text(encoding="utf-8")
+        self.assertIn("from pilot.ridge_readiness import readiness_report", source)
+        self.assertIn("ridge = readiness_report(preview)", source)
+        self.assertIn("Inspect the seven missing Ridge-model inputs", source)
+        self.assertIn('pd.DataFrame(ridge["unavailable_features"])', source)
+        self.assertIn('metric_ensemble.metric("GridStress ensemble", "Not available")', source)
+        self.assertIn("A trained Ridge", source)
+        self.assertIn('" · ".join(ORIGINAL_TEAM_MEMBERS)', source)
+
 
 if __name__ == "__main__":
     unittest.main()
