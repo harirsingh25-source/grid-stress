@@ -68,6 +68,57 @@ Then visit the loopback URL printed by Streamlit (typically http://localhost:850
 
 **Not a historical forecast-vintage archive:** the current SMARD API can return revised values. The page describes a *historical input preview*; no claims of backtested skill, operational grid risk, a 2026-11-21 model forecast, or daily automatic service are supported.
 
+## Original SMARD residual-load actuals: coverage preflight (new, read-only)
+
+**Verified user Mac receipt (20 November 2026):** the exact previous
+draft head `8d8274de07b873426166743061e1a4367edd4a97` was pulled
+successfully and **28 of 28 offline tests passed**. The live Ridge
+readiness command for delivery 2026-11-21 returned 24 complete target
+hours, the original frozen `linear_direct` 13-feature configuration
+(`alpha=0.01`), six day-ahead/calendar inputs available and seven
+missing. It correctly reported `RIDGE_FEATURES_INCOMPLETE`,
+`trained_estimator_available=false`, no Ridge/ensemble predictions and
+`safe_to_publish=false`.
+
+**Next research input check:** the team's original API notebook identifies
+SMARD filter **4359** as **observed residual load**. The new
+`pilot/smard_actuals_preflight.py` independently fetches only this
+public hourly filter, for the original Ridge features
+`rl_lag_48h`, `rl_lag_168h`, and `rl_last_available`.
+For an ordinary 24-hour delivery day, the expected source-hour set is
+**24 + 24 + 1 = 49 distinct observations**. The final hour starts
+at **15:00 Europe/Berlin** on the day before delivery, per the original
+team's 18:00 issue/16:00 actuals cutoff convention.
+
+To inspect source completeness on the development Mac, after a
+successful tomorrow-only SMARD preflight and **after 18:15 local**:
+
+    cd "$HOME/Repositories/grid-stress"
+    git pull --ff-only origin feature/live-smard-ensemble-pilot-20261120
+    python3 -m unittest discover -s tests -v
+    python3 -m pilot.smard_actuals_preflight --delivery-date 2026-11-21
+
+The date above is applicable only to the 20 November 2026 issuance;
+on other dates, supply the actual next day in `Europe/Berlin`.
+The new nine tests use entirely synthetic weekly-package SMARD
+responses; they verify all 49 requested hours, rejection of missing,
+duplicate and null values, negative residual acceptance, endpoint
+allowlisting and DST refusal.
+
+**Critical scientific boundary:** successful API retrieval only
+demonstrates that hourly observations are **currently served**; it
+does **not** demonstrate they were originally **published at or before**
+the 16:00 cutoff, because the public API may have late publications or
+revisions. This separate read-only audit is not included as additional
+**validated** Ridge features, does not alter the 6/13 readiness
+result, does not fit a model and never schedules or publishes anything.
+DST-day local-time lag equivalence with the team's naive timestamp
+index is deliberately refused pending independent verification.
+The next engineering work remains reconstructing trustworthy
+`as_of` snapshots, validated lag features, recent forecast errors,
+calendar holiday and capacity publication rules, and training the
+actual fitted estimator.
+
 ## Ridge model feature-readiness gate (new, read-only)
 
 The team saved `data/models/linear_direct/config.json` lists its original
