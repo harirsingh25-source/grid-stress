@@ -68,6 +68,59 @@ Then visit the loopback URL printed by Streamlit (typically http://localhost:850
 
 **Not a historical forecast-vintage archive:** the current SMARD API can return revised values. The page describes a *historical input preview*; no claims of backtested skill, operational grid risk, a 2026-11-21 model forecast, or daily automatic service are supported.
 
+## Bounded SMARD HTTPS timeout recovery (20 Nov 2026)
+
+**Owner Mac exact-head receipt:** At `02ac7928e8874787f8252978dffd8fd4561d4a5d`,
+the user pulled this branch and ran **54/54 offline tests successfully**.
+The first real `pilot.ridge_feature_snapshot --save-local` run then
+failed before producing an output with
+`RIDGE_FEATURES_NOT_AVAILABLE: <urlopen error _ssl.c:989:
+The handshake operation timed out>`. That is an HTTPS connection
+timeout, **not** a model-training or feature-contract failure. The
+full live 24×13 input table and immutable snapshot were **not verified
+or saved** by this attempt.
+
+The follow-on `pilot/smard_transport.py` now provides a single
+security-preserving, bounded network helper:
+- default Python TLS certificate verification stays **enabled**;
+- reads at most 5 MB of one allowed SMARD JSON resource;
+- retries **one** transient TLS/network timeout or HTTP
+  502/503/504 response after a one-second pause;
+- **HTTP 429 stops immediately** to respect upstream rate limiting;
+- invalid JSON, missing series, certificate errors, non-SMARD paths
+  and all other failures **stop**, without substituting data;
+- on final timeout, the error **identifies the SMARD request path** so
+  we can diagnose the failing source.
+
+The full Ridge builder also caches identical SMARD weekly index and
+package documents **within the single feature-capture call only**.
+No persistent cross-day or cross-run cache is introduced, avoiding a
+false sense of source vintage. It remains read-only, manual-on-request
+and unfit for public forecasting until the original publication
+cutoff and model are verified.
+
+Exact Mac rerun commands (after **18:15 Europe/Berlin**):
+
+    cd "$HOME/Repositories/grid-stress"
+    git pull --ff-only origin feature/live-smard-ensemble-pilot-20261120
+    python3 -m unittest discover -s tests -v
+    TARGET_DAY="$(TZ=Europe/Berlin date -v+1d +%F)"
+    python3 -m pilot.ridge_feature_snapshot --delivery-date "$TARGET_DAY" --save-local
+
+If the live request still fails, **do not run it in a tight loop**.
+Report the new HTTP status or source path to diagnose the issue. Do
+not disable TLS/certificate checks, install a custom root CA, alter
+SMARD API hosts, bypass publication cutoffs or switch on Cloudflare.
+
+The new transport tests are **offline**. The exact-head local Python
+test suite, real full-source request and browser checks must be run
+before calling this fix verified. The complete numerical table, if
+captured, must still carry
+`RIDGE_13_FEATURES_CURRENT_SNAPSHOT_UNVERIFIED`,
+`ridge_predictions=null`, `ensemble_predictions=null`, and
+`safe_to_publish=false`. Source vintage, independently trained Ridge
+inference, ensemble and daily automation remain outstanding.
+
 ## First full original Ridge feature-table prototype (current API snapshots ONLY)
 
 **Exact verified starting point:** on **20 November 2026**, the owner
