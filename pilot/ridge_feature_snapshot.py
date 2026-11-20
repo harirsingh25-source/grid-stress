@@ -202,8 +202,8 @@ def current_feature_snapshot(preview: dict, get_json=fetch_json, holiday_check=n
     cap_parts = []
     for key in ("wind_off_capacity", "wind_on_capacity", "solar_capacity"):
         filter_id = FILTERS[key]
-        initial = fetch_exact_hours(filter_id, {year_probe}, get_json)[year_probe]
-        current = fetch_exact_hours(filter_id, {current_probe}, get_json)[current_probe]
+        initial = fetch_exact_hours(filter_id, {year_probe}, get_once)[year_probe]
+        current = fetch_exact_hours(filter_id, {current_probe}, get_once)[current_probe]
         if not math.isclose(initial, current, abs_tol=0.01, rel_tol=0):
             raise PilotUnavailable("annual installed-capacity series changed; team assumption fails")
         cap_parts.append(current)
