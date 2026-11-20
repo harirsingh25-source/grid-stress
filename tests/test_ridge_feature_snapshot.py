@@ -93,7 +93,7 @@ class RidgeFullFeatureTests(unittest.TestCase):
         self.assertEqual(len(result["feature_rows"]), 24)
         self.assertEqual(tuple(result["feature_rows"][0])[1:], EXPECTED_FEATURES)
         for row in result["feature_rows"]:
-            self.assertEqual(row["hour_start_utc"][:10], "2026-11-20" if row["hour"] == 0 else row["hour_start_utc"][:10])
+            self.assertEqual(row["hour_start_utc"], daily_hours_utc(DAY)[row["hour"]].isoformat())
             self.assertEqual(row["is_weekend"], 1)
             self.assertEqual(row["holiday"], 0)
             self.assertEqual(row["rl_lag_48h"], 15000)
