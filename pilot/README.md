@@ -107,6 +107,12 @@ rule. At day-ahead issue time 18:00 on DAY−1, the original team
 uses a 2-hour actuals lag, a 16:00 availability cutoff and the
 15:00 last eligible actual hour.
 
+The tomorrow-only Streamlit view also includes an
+**Original Ridge model · feature readiness** panel, which reports
+**6/13 available** and displays a collapsible table naming the seven
+missing inputs. It is informative rather than predictive; a chart of
+SMARD input components must not be mistaken for an ML forecast.
+
 A report must say `RIDGE_FEATURES_INCOMPLETE`, keep
 `trained_estimator_available=false`, `ridge_predictions=null`,
 `ensemble_predictions=null`, `source_vintage_verified=false`
