@@ -68,6 +68,39 @@ Then visit the loopback URL printed by Streamlit (typically http://localhost:850
 
 **Not a historical forecast-vintage archive:** the current SMARD API can return revised values. The page describes a *historical input preview*; no claims of backtested skill, operational grid risk, a 2026-11-21 model forecast, or daily automatic service are supported.
 
+## Two local Streamlit views (20 November 2026)
+
+The same `pilot/smard_streamlit.py` now offers a choice between
+**Past-day SMARD API snapshot** and **Tomorrow's SMARD input preview**.
+The tomorrow mode calls the already-tested `build_preview` function
+**only after 18:15 Europe/Berlin** and **only after a manual Fetch click**.
+It checks the complete 23/24/25 physical-hour delivery day and shows
+SMARD load, SMARD wind+solar and the arithmetic residual side by side,
+with a local-time Plotly graph, table, and optional CSV export.
+
+An actual Mac user run at **20 November 2026 18:17 CET** returned all
+24 SMARD grid-load and wind/solar forecast values for **21 November 2026**
+from the official public API, with `RESEARCH_PREVIEW_ONLY` and no ensemble.
+The new UI now exposes a manual on-demand view of those inputs, but
+**its post-change browser render has not yet been certified**.
+
+When restarting, make sure the previous Streamlit terminal is still
+running or restart it and leave it open:
+
+    cd "$HOME/Repositories/grid-stress"
+    git pull --ff-only origin feature/live-smard-ensemble-pilot-20261120
+    python3 -m unittest discover -s tests -v
+    ./.venv/bin/streamlit run pilot/smard_streamlit.py --server.address 127.0.0.1
+
+Enter `http://127.0.0.1:8501` directly in Safari. Safari's
+`can't connect` when the listener process has exited is a local
+server-availability issue, not evidence of an SMARD failure.
+The new mode is **on demand, not a recurring job**; the six fitted
+estimators, ensemble weights, immutable source vintages, automatic
+retraining, regular scheduler and public dashboard still do not exist.
+No recurring API traffic, new Cloudflare usage or website release is
+introduced. Retain the prominent original four-person team attribution.
+
 ## Original four-person team credit and import fix (20 Nov 2026)
 
 The canonical original Streamlit `streamlit/app_pages/about.py` lists
