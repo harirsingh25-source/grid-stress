@@ -198,7 +198,7 @@ def current_feature_snapshot(preview: dict, get_json=fetch_json, holiday_check=n
     # The original team treats calendar-year capacity as published on Jan 1.
     # Probe two points in the year; this is NOT proof of publication vintage.
     issue_year = issue_day.year
-    year_probe = datetime(issue_year, 1, 2, 12, tzinfo=LOCAL).astimezone(timezone.utc)
+    year_probe = datetime(issue_year, 1, 1, 12, tzinfo=LOCAL).astimezone(timezone.utc)
     current_probe = datetime.combine(issue_day, time(12), LOCAL).astimezone(timezone.utc)
     cap_parts = []
     for key in ("wind_off_capacity", "wind_on_capacity", "solar_capacity"):
