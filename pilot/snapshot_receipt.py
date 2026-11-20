@@ -12,6 +12,7 @@ import json
 import os
 import re
 from pathlib import Path
+from datetime import datetime, timezone
 
 from .smard_daily_pilot import PilotUnavailable
 
@@ -50,12 +51,16 @@ def save_local_receipt(report: dict, directory: Path | None = None) -> dict:
     """Write only a new file, owner-readable, never overwrite, no symlinks."""
     data = canonical_bytes(report)
     base = directory or Path(__file__).resolve().parent / "snapshots"
-    base = base.resolve()
+    if base.is_symlink():
+        raise PilotUnavailable("snapshot folder cannot be a symlink")
     base.mkdir(parents=True, exist_ok=True, mode=0o700)
-    if not base.is_dir() or base.is_symlink():
+    if not base.is_dir():
         raise PilotUnavailable("snapshot folder must be an ordinary directory")
     date_part = report["delivery_date"].replace("-", "")
-    date_time = report["captured_at_utc"].replace("-", "").replace(":", "").replace(".", "").replace("+00", "Z")
+    captured = datetime.fromisoformat(report["captured_at_utc"])
+    if captured.tzinfo != timezone.utc:
+        raise PilotUnavailable("local receipt must use a UTC capture timestamp")
+    date_time = captured.strftime("%Y%m%dT%H%M%S%fZ")
     digest = hashlib.sha256(data).hexdigest()
     name = f"smard-ridge-{date_part}-{date_time}-{digest[:12]}.json"
     path = base / name
