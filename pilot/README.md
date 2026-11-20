@@ -68,6 +68,59 @@ Then visit the loopback URL printed by Streamlit (typically http://localhost:850
 
 **Not a historical forecast-vintage archive:** the current SMARD API can return revised values. The page describes a *historical input preview*; no claims of backtested skill, operational grid risk, a 2026-11-21 model forecast, or daily automatic service are supported.
 
+## Ridge model feature-readiness gate (new, read-only)
+
+The team saved `data/models/linear_direct/config.json` lists its original
+Ridge-direct model as **13 specific features**, in a fixed order, with
+`alpha=0.01`. This is a **tuning/configuration artifact**, not a
+fitted-estimator serialization. Do not treat it or historical
+`results.joblib` data as a real live predictor.
+
+A new standard-library-only CLI reads that original JSON and today's
+fresh SMARD preview, checks every physical target hour and both component
+forecast values, and gives a conservative **feature-readiness report**:
+
+    cd "$HOME/Repositories/grid-stress"
+    git pull --ff-only origin feature/live-smard-ensemble-pilot-20261120
+    python3 -m unittest discover -s tests -v
+    python3 -m pilot.ridge_readiness --delivery-date 2026-11-21
+
+The example command is relevant on **20 November 2026 after 18:15
+Europe/Berlin**. On another day use that day's *next* date. It requires
+no installation beyond the project's existing Python 3.11 and makes
+read-only public SMARD API requests. The new 8 tests are offline and
+exercise 13-feature schema consistency, selected hyperparameter,
+cutoff/lag rule, missing and invalid hours, DST and fail-closed status.
+
+**Ready from current two SMARD input series (6/13):** `hour`,
+`dow`, `month`, `is_weekend`, `fc_grid_load`,
+`fc_gen_wind_solar`. This is only input *availability*, not a
+point-in-time model forecast.
+
+**Not reconstructed (7/13):** `holiday`,
+`rl_lag_48h`, `rl_lag_168h`, `rl_last_available`,
+`err_grid_load_recent`, `err_renewables_recent`,
+`cap_total`. These need independently verified German holiday
+calendar, past actual residual-load hours, the recent 24-hour
+SMARD forecast-error calculation and installed-capacity publication
+rule. At day-ahead issue time 18:00 on DAY−1, the original team
+uses a 2-hour actuals lag, a 16:00 availability cutoff and the
+15:00 last eligible actual hour.
+
+A report must say `RIDGE_FEATURES_INCOMPLETE`, keep
+`trained_estimator_available=false`, `ridge_predictions=null`,
+`ensemble_predictions=null`, `source_vintage_verified=false`
+and `safe_to_publish=false`. Do **not** convert this into a public
+Ridge prediction, operational warning or live ensemble yet. This
+readiness gate does not itself train or fit any model, add cron,
+publish a dashboard or change the original team application.
+
+In addition to the seven feature values, faithful future model
+reproduction requires verifying previous-day forecast availability
+at/after the 16:00 cutoff, the original 36-month training/refit
+protocol, source snapshot provenance, and a real fitted Ridge
+pipeline validated on strictly out-of-sample dates.
+
 ## Two local Streamlit views (20 November 2026)
 
 The same `pilot/smard_streamlit.py` now offers a choice between
