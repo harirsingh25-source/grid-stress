@@ -246,7 +246,7 @@ def current_feature_snapshot(preview: dict, get_json=fetch_json, holiday_check=n
     return {
         "status": "RIDGE_13_FEATURES_CURRENT_SNAPSHOT_UNVERIFIED",
         "delivery_date": day.isoformat(),
-        "captured_at_utc": datetime.now(timezone.utc).isoformat(),
+        "captured_at_utc": datetime.now(timezone.utc).isoformat(timespec="microseconds"),
         "source": "Bundesnetzagentur | SMARD.de",
         "original_model": readiness["model"],
         "original_alpha": readiness["saved_alpha"],
@@ -277,11 +277,18 @@ def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--delivery-date", required=True,
                         help="Tomorrow in Europe/Berlin; after 18:15 local")
+    parser.add_argument("--save-local", action="store_true",
+                        help="Write a hash-verified local-only, Git-ignored source capture")
     args = parser.parse_args(argv)
     try:
         day = date.fromisoformat(args.delivery_date)
         preview = build_preview(day, datetime.now(timezone.utc))
         report = current_feature_snapshot(preview)
+        if args.save_local:
+            from .snapshot_receipt import save_local_receipt
+            receipt = save_local_receipt(report)
+            print(json.dumps(receipt, indent=2))
+            return 0
     except (PilotUnavailable, ValueError, KeyError, OSError, json.JSONDecodeError) as exc:
         print(f"RIDGE_FEATURES_NOT_AVAILABLE: {exc}", file=sys.stderr)
         return 2
