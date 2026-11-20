@@ -10,13 +10,25 @@ loads model binaries, computes an ML forecast, or publishes to hari-raj-singh.co
 from __future__ import annotations
 
 from datetime import date, datetime, timedelta, timezone
+from pathlib import Path
+import sys
 
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 
+# Streamlit executes this file as a script and puts pilot/ on sys.path, not
+# necessarily the repository root. Make the package imports independent of
+# the shell's PYTHONPATH while keeping the existing pilot modules unchanged.
+_REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
+
 from pilot.smard_daily_pilot import LOCAL, PilotUnavailable
 from pilot.smard_historical_snapshot import build_historical_snapshot
+from pilot.team_credits import (
+    ORIGINAL_TEAM_MEMBERS, ORIGINAL_TEAM_REPOSITORY, PERSONAL_RESEARCH_FORK,
+)
 
 
 st.set_page_config(
@@ -27,6 +39,21 @@ st.set_page_config(
 
 st.title("⚡ GridStress | SMARD input explorer")
 st.caption("Research prototype · German electricity market · local-only preview")
+
+st.markdown(
+    "**Original collaborative GridStress Team Capstone (neuefische): "
+    + " · ".join(ORIGINAL_TEAM_MEMBERS)
+    + ".**"
+)
+st.caption(
+    "This experimental SMARD explorer is independent follow-on work in Hari's "
+    "personal research fork. The original team is credited for the capstone; "
+    "this pilot does not imply the other members developed or endorsed it."
+)
+st.markdown(
+    f"[Original team repository]({ORIGINAL_TEAM_REPOSITORY}) · "
+    f"[Personal research fork]({PERSONAL_RESEARCH_FORK})"
+)
 
 st.warning(
     "**Historical SMARD component forecasts only.** The API may serve revised "
@@ -139,6 +166,7 @@ st.caption(
     "published residual-load forecast."
 )
 st.caption(
-    "Original collaborative project: https://github.com/fruchtgummikauer/grid-stress "
-    "· Personal research fork: https://github.com/harirsingh25-source/grid-stress"
+    "GridStress Team Capstone: " + ", ".join(ORIGINAL_TEAM_MEMBERS)
+    + " (neuefische). Data: Bundesnetzagentur | SMARD.de. "
+    + "Independent local research pilot; not the original team's deployment."
 )
