@@ -31,8 +31,38 @@ From the repo root, without VS Code, run:
 
     python3 -m unittest discover -s tests -v
     python3 -m venv .venv
+    ./.venv/bin/python -m pip install --upgrade pip
     ./.venv/bin/python -m pip install streamlit pandas plotly
     ./.venv/bin/python -m streamlit run pilot/smard_streamlit.py
+
+**Intel Mac wheel workaround, local research only.** On some Intel Macs,
+pip chooses a recent PyArrow source archive instead of a compatible binary
+wheel. Source compilation can fail with `can't find Rust compiler` while
+building a transitive `libcst` dependency. The Streamlit dependency
+allows PyArrow 17.0.0, which provides a CPython 3.11 wheel for macOS
+10.15+ x86-64 (unlike recent PyArrow wheels that require macOS 12+).
+Only if your `python3` reports CPython 3.11 and `uname -m` reports
+`x86_64`, prefer this **non-production** workaround, which rejects
+source archives rather than compiling native dependencies:
+
+    cd "$HOME/Repositories/grid-stress"
+    ./.venv/bin/python -m pip install --upgrade pip
+    ./.venv/bin/python -m pip install --only-binary=:all: "pyarrow==17.0.0" "streamlit==1.67.0" "pandas==3.1.1" "plotly==7.1.0"
+    ./.venv/bin/python -m pip check
+    ./.venv/bin/python -m streamlit run pilot/smard_streamlit.py
+
+If no compatible wheel is found, **stop** and report
+`sw_vers -productVersion`, `uname -m` and `./.venv/bin/python -V`
+rather than installing Rust or using `--no-binary`.
+PyArrow 17 is a compatibility fallback for a **localhost-only preview**,
+not a production security baseline. A hosted research dashboard must use
+a supported environment and freshly reviewed dependencies.
+
+On the Mac that exposed the issue (2026-11-20), the full test suite
+passed 14/14, but Streamlit installation **failed before launch** on
+`pyarrow 26.0.1` source build / `libcst` Rust requirement. The
+workaround above is proposed; do not count the UI as verified until
+its package install, import, launch and first browser rendering succeed.
 
 Then visit the loopback URL printed by Streamlit (typically http://localhost:8501). Select a completed historical day such as 2026-11-19 and click **Fetch SMARD historical inputs**. The explorer prints source provenance, UTC acquisition time, full-hour coverage, interactive Plotly lines, an hourly table and an optional CSV download. Only the deliberate button click fetches data, with a ten-minute cache. Streamlit's port remains local unless you deliberately configure network access. Keep it local-only for this pilot.
 
