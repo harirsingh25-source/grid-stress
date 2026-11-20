@@ -23,6 +23,21 @@ Open this fork's branch feature/live-smard-ensemble-pilot-20261120, open a termi
 
 The second command is only appropriate after **18:15 Europe/Berlin**, where YYYY-MM-DD is the actual **next local calendar day**. It makes real, read-only SMARD HTTP requests, prints research-preview JSON, and creates no files. Before that time, missing data, or any invalid response, it exits with NOT_AVAILABLE and nonzero status. Tests use local synthetic responses and require no network.
 
+## Local Streamlit preview (already implemented, NOT HOSTED)
+
+File: `pilot/smard_streamlit.py`. This is a **separate local read-only UI** that plots the two SMARD component forecasts and their arithmetic residual for a **completed historical day**. It deliberately **does not** show a predicted ensemble or live publication, does not call the pilot's tomorrow-only pathway and does not change the original team Streamlit app.
+
+From the repo root, without VS Code, run:
+
+    python3 -m unittest discover -s tests -v
+    python3 -m venv .venv
+    ./.venv/bin/python -m pip install streamlit pandas plotly
+    ./.venv/bin/python -m streamlit run pilot/smard_streamlit.py
+
+Then visit the loopback URL printed by Streamlit (typically http://localhost:8501). Select a completed historical day such as 2026-11-19 and click **Fetch SMARD historical inputs**. The explorer prints source provenance, UTC acquisition time, full-hour coverage, interactive Plotly lines, an hourly table and an optional CSV download. Only the deliberate button click fetches data, with a ten-minute cache. Streamlit's port remains local unless you deliberately configure network access. Keep it local-only for this pilot.
+
+**Not a historical forecast-vintage archive:** the current SMARD API can return revised values. The page describes a *historical input preview*; no claims of backtested skill, operational grid risk, a 2026-11-21 model forecast, or daily automatic service are supported.
+
 ## Limits to understand before going live
 
 - **Historical revision / forecast vintage:** Public SMARD endpoints can contain revisions. A post-18:00 fetch alone cannot prove each series represents exactly the values originally available at the issue time. We need immutable snapshots with acquisition receipts, publication-time checks, source digests and backtests.
