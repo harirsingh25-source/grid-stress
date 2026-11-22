@@ -21,6 +21,7 @@ import hashlib
 import json
 import math
 import os
+import re
 import sys
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
@@ -230,10 +231,21 @@ def receipt_payload(report: dict) -> bytes:
     ):
         raise PilotUnavailable("incomplete research ingestion receipt schema")
     for row, hour in zip(rows, expected):
-        if row.get("hour_start_utc") != hour.isoformat():
+        if not isinstance(row, dict) or row.get("hour_start_utc") != hour.isoformat():
             raise PilotUnavailable("receipt has wrong UTC physical hours")
+        if row.get("hour_start_europe_berlin") != hour.astimezone(LOCAL).isoformat():
+            raise PilotUnavailable("receipt has wrong local hour mapping")
         if not isinstance(row.get("values"), dict) or set(row["values"]) != set(FILTERS.values()):
             raise PilotUnavailable("receipt has wrong SMARD source keys")
+
+    # Reconstruct every requested normalized value from the archived source
+    # documents, not just the stored output table. A checksum alone cannot
+    # detect a table accidentally derived from different API responses.
+    seen_doc_paths = set()
+    index_filters = set()
+    package_counts = {fid: 0 for fid in FILTERS}
+    source_values = {fid: {} for fid in FILTERS}
+    wanted = set(expected)
     for doc in docs:
         if not isinstance(doc, dict) or not isinstance(doc.get("document"), dict):
             raise PilotUnavailable("invalid decoded source document")
@@ -241,11 +253,88 @@ def receipt_payload(report: dict) -> bytes:
         if doc.get("sha256_canonical_json") != computed:
             raise PilotUnavailable("source document checksum mismatch")
         path = doc.get("path")
-        if not isinstance(path, str) or not any(
-            path.startswith(f"/{fid}/DE/") and path.endswith(".json")
-            for fid in FILTERS
+        match = re.fullmatch(
+            r"/([0-9]+)/DE/(index_hour|([0-9]+)_DE_hour_([0-9]+))\\.json",
+            path if isinstance(path, str) else "",
+        )
+        if (
+            match is None or int(match.group(1)) not in FILTERS
+            or (match.group(3) is not None and match.group(3) != match.group(1))
+            or path in seen_doc_paths
         ):
-            raise PilotUnavailable("unexpected source-document request path")
+            raise PilotUnavailable("unexpected or duplicate source-document request path")
+        seen_doc_paths.add(path)
+        fid = int(match.group(1))
+        retrieved = doc.get("retrieved_at_utc")
+        if not isinstance(retrieved, str):
+            raise PilotUnavailable("source receipt retrieval time missing")
+        try:
+            parsed = datetime.fromisoformat(retrieved)
+        except ValueError as exc:
+            raise PilotUnavailable("invalid source retrieval timestamp") from exc
+        if parsed.tzinfo is None or parsed.utcoffset() != timedelta(0):
+            raise PilotUnavailable("source retrieval time must be UTC")
+        if match.group(2) == "index_hour":
+            index_filters.add(fid)
+            continue
+        package_counts[fid] += 1
+        series = doc["document"].get("series")
+        if not isinstance(series, list):
+            raise PilotUnavailable("invalid saved source series")
+        for entry in series:
+            if (
+                not isinstance(entry, (list, tuple))
+                or len(entry) != 2 or type(entry[0]) is not int
+            ):
+                raise PilotUnavailable("invalid saved source pair")
+            timestamp_ms, value = entry
+            hour = datetime.fromtimestamp(timestamp_ms / 1000, timezone.utc)
+            if hour not in wanted:
+                continue
+            if hour in source_values[fid]:
+                raise PilotUnavailable("duplicate saved source hour")
+            if value is not None and (
+                type(value) not in (int, float)
+                or not math.isfinite(value)
+                or (fid not in SIGNED_FILTERS and value < 0)
+            ):
+                raise PilotUnavailable("invalid saved source value")
+            source_values[fid][hour] = None if value is None else float(value)
+    if index_filters != set(FILTERS) or any(
+        not 1 <= n <= MAX_PACKAGES for n in package_counts.values()
+    ):
+        raise PilotUnavailable("missing source index or weekly package")
+
+    complete_all = True
+    for i, (fid, label, key) in enumerate(ORIGINAL_SERIES):
+        found = source_values[fid]
+        missing = len(wanted - found.keys())
+        nulls = sum(v is None for v in found.values())
+        complete = missing == 0 and nulls == 0
+        spec = summary[i]
+        if (
+            not isinstance(spec, dict)
+            or spec.get("filter_id") != fid
+            or spec.get("original_header") != label
+            or spec.get("field") != key
+            or spec.get("retrieved_hour_count") != len(found)
+            or spec.get("missing_hour_count") != missing
+            or spec.get("null_value_count") != nulls
+            or spec.get("complete") is not complete
+        ):
+            raise PilotUnavailable("source-summary and document mismatch")
+        complete_all &= complete
+        for row, hour in zip(rows, expected):
+            actual = row["values"][key]
+            source_value = found.get(hour)
+            if actual != source_value or (
+                actual is not None and (
+                    type(actual) not in (int, float) or not math.isfinite(actual)
+                )
+            ):
+                raise PilotUnavailable("normalized source value disagrees with documents")
+    if complete_all is not report["all_series_complete"]:
+        raise PilotUnavailable("receipt completeness flag disagrees with sources")
     encoded = canonical_json(report)
     if len(encoded) > MAX_RECEIPT_BYTES:
         raise PilotUnavailable("daily raw source receipt exceeds size bound")
