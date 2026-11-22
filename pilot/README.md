@@ -68,6 +68,75 @@ Then visit the loopback URL printed by Streamlit (typically http://localhost:850
 
 **Not a historical forecast-vintage archive:** the current SMARD API can return revised values. The page describes a *historical input preview*; no claims of backtested skill, operational grid risk, a 2026-11-21 model forecast, or daily automatic service are supported.
 
+## Recovering original training data: one-month provenance probe (22 Nov 2026)
+
+The owner searched the current Mac's Documents, Desktop, Downloads and
+Repositories; **neither** `data/smard.csv` nor
+`data/metrics/smard_forecast_errors_hourly.csv` was found. The old
+course/UniProjects directories were absent on this Mac, and only
+`Macintosh HD` appeared under `/Volumes`, so the former LaCie
+backup was **not mounted**. No claim is made that the files were
+deleted from other machines or backups.
+
+We must **not** invent a trained Ridge model from the 24-hour preview
+receipt: the original notebook's 36-month training window requires
+`data/smard.csv` and a matching hourly errors CSV, both ignored by Git.
+
+### Minimal data-lineage comparison (no files written)
+
+The original team's `notebooks/API-connection.ipynb` fetched exactly
+11 public hourly SMARD series for **2019-01-01 to 2026-09-07
+(exclusive)**, exported local wall-time timestamps, semicolon CSV and
+German decimal commas. The modeling notebook `regression-models-claude`
+expects **67,336** observed rows through 2026-09-06 23:00, with **93
+independently saved monthly SHA-256 prefixes** for both source and
+forecast-error data in `data/models/linear_direct/config.json`.
+
+Before triggering thousands of historical SMARD API requests, run a
+small **September 2026 six-day fingerprint probe**:
+
+    cd "$HOME/Repositories/grid-stress"
+    git pull --ff-only origin feature/live-smard-ensemble-pilot-20261120
+    ./.venv/bin/python -m unittest discover -s tests -v
+    ./.venv/bin/python -m pilot.smard_history_fingerprint --month 2026-09
+
+This **read-only** `pilot/smard_history_fingerprint.py` script:
+- requests only **one selected month**, through the verified
+  bounded SMARD TLS transport (never the whole 2019–2026 history);
+- uses all 11 series in the original team's declared order;
+- reproduces the original local-time German-CSV read-back, required
+  feature-column order, hourly error definitions and
+  `pandas.util.hash_pandas_object(..., index=True)` with SHA-256
+  truncation to 16 hex characters;
+- compares the two newly computed month fingerprints against the
+  frozen original team's `run_on` fingerprints;
+- prints a structured **`ONE_MONTH_REFERENCE_MATCH`** or
+  **`ONE_MONTH_REFERENCE_MISMATCH`** with both reference and new hash
+  values. The result does **not** create, replace, install, publish,
+  train, or schedule anything. No source CSV is written.
+
+A full match would establish only *one-month numerical lineage*,
+not the other 92 months or original day-ahead forecast issue vintages.
+A mismatch is **not proof of malicious changes or a bad model**:
+possible explanations include revised SMARD observations/forecasts,
+differences in pandas versions, local-time/DST representation and
+float/CSV round-trip semantics. Original saved config records pandas
+3.0.5; the pilot Mac environment may have another version. All
+outputs retain `safe_to_publish=false` and
+`ridge_model_trained=false`.
+
+If the probe fails because of SMARD HTTP 429 or another network
+problem, stop and investigate that error, do not repeatedly retry.
+If it succeeds, decide whether to restore the original historic files
+from an authorized backup or to reconstruct a **new, separately
+versioned** full history; never overwrite canonical training data
+or claim old model scores without a verified dataset match.
+
+The last verified owner Mac milestone was **64/64 tests passing** plus
+a local SHA-256 research snapshot for delivery 2026-11-21. The
+new one-month probe and its 10 offline tests are **not yet verified
+on the owner Mac**. The expected total is **74 tests**.
+
 ## Bounded SMARD HTTPS timeout recovery (20 Nov 2026)
 
 **Owner Mac exact-head receipt:** At `02ac7928e8874787f8252978dffd8fd4561d4a5d`,
