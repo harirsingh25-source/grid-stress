@@ -68,6 +68,74 @@ Then visit the loopback URL printed by Streamlit (typically http://localhost:850
 
 **Not a historical forecast-vintage archive:** the current SMARD API can return revised values. The page describes a *historical input preview*; no claims of backtested skill, operational grid risk, a 2026-11-21 model forecast, or daily automatic service are supported.
 
+## Manual append-only completed-day ingestion (22 Nov 2026; not scheduled)
+
+The new `pilot/smard_incremental_ingestion.py` is the **first manually
+invoked ingestion implementation** from `INGESTION_DESIGN.md`.
+It captures **yesterday's completed delivery day** in Europe/Berlin,
+with all the team's original **11 public SMARD hourly filter IDs** and
+the true 23/24/25 physical UTC hours. It does **not** retrieve the
+2019–2026 history or alter the original team's CSVs.
+
+Usage after checking out the draft pilot branch:
+
+    cd "$HOME/Repositories/grid-stress"
+    git pull --ff-only origin feature/live-smard-ensemble-pilot-20261120
+    ./.venv/bin/python -m unittest discover -s tests -v
+    ./.venv/bin/python -m pilot.smard_incremental_ingestion
+
+The CLI chooses the previous local day automatically (for example,
+on 22 November 2026 this is 21 November 2026). You may also supply
+`--day 2026-11-21` **on 22 November only**. There is no backfill
+option; the narrow one-day constraint prevents unintended bulk
+requests. It is **manual**, not triggered by cron, Actions or a cloud
+job. The eleven source filters normally need at least one weekly
+index and one hourly package each, so this makes about **22 public
+GET requests**, with the project's bounded HTTPS timeout/retry and
+rate-limit safeguards.
+
+On success it writes an **append-only, owner-readable** JSON research
+receipt into Git-ignored `pilot/ingestion_receipts/` and prints the
+path, physical-hour count, SHA-256 and completion status. The receipt
+preserves **decoded JSON source documents**, their canonical-JSON
+hashes, each local receipt time in UTC, the complete normalized
+hourly values or explicit null/missing-hour flags, and the original
+eleven filter identifiers. It is **not byte-for-byte HTTP response
+capture** and does not know when SMARD first published each value.
+
+All reported source values and completeness counts are cross-checked
+against the archived JSON documents before the final immutable file
+is created. The file is written to a new temporary path and atomically
+hard-linked into a final never-overwritten path; failures leave the
+original source receipts untouched. An incomplete provider day may
+still be archived with `INCOMPLETE_CURRENT_SOURCE_ONLY`, but it
+**cannot** be used as training-eligible data.
+
+For a second capture of the **same** completed day, the user may
+explicitly supply `--compare /full/path/to/older-receipt.json`;
+the new receipt records any changed/null-to-value original series
+hours and the older receipt SHA-256. Neither vintage is overwritten.
+If the provider fails or rate-limits, do not run in a tight loop.
+
+**Boundaries:** no change to `data/smard.csv` or
+`data/metrics/smard_forecast_errors_hourly.csv`, no automatic schedule,
+no fitted model, no ensemble prediction, no AI-ready or historically
+as-of-certified training table, no public website output, and no
+cloud cost. Every receipt explicitly says
+`original_publication_time_verified=false`,
+`historic_issue_time_vintage_verified=false`,
+`eligible_as_of_16h_cutoff_verified=false`,
+`model_training_authorized=false`, `safe_to_publish=false`.
+
+The last owner Mac verification was **74/74 passing** at the earlier
+head, while the September 2026 saved-team fingerprint comparison
+returned **mismatching** source and error hashes. The additional
+**16 offline ingestion regression tests** are now included in the
+draft branch, bringing the expected total to **90**, but this exact
+head and the live completed-day ingestion are **not yet verified on
+the Mac**. Do not claim a successful daily archive until that receipt
+has been observed and checked.
+
 ## Proposed future ingestion cadence (not enabled)
 
 The next GridStress research architecture is documented in
