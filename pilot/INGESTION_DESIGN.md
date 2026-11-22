@@ -113,7 +113,35 @@ dataset **in a separate Git-ignored directory**:
    hari-raj-singh.com. No cron, GitHub Actions schedule, Cloudflare Worker,
    merge, deployment or paid service is authorized by this design.
 
-**Next exact action:** implement and offline-test a *single-day append-only
-capture* with raw source receipts and data-revision records; leave its
-automatic trigger off. Do not start a full-history backfill until the
-September hash mismatch and allowable source cadence are understood.
+## Implementation progress — manually invoked pilot (22 Nov 2026)
+
+**Created but NOT yet owner-Mac verified:**
+`pilot/smard_incremental_ingestion.py` handles exactly the previous
+Europe/Berlin calendar day, all 11 original SMARD series, and all
+23/24/25 physical UTC hours. Source documents are archived as decoded
+JSON with canonical hashes and timestamps of retrieval. The resulting
+original-value table is independently rechecked against those documents,
+then saved once in an owner-readable, Git-ignored
+`pilot/ingestion_receipts/` file by atomic hard-link publication, never
+overwriting previous captures. Null/missing data are preserved and
+explicitly mark the archive incomplete.
+
+An optional `--compare /path/to/prior-day-receipt.json` performs a
+same-delivery-day audit and records changed source values alongside
+the old receipt checksum. The old capture is retained.
+
+This is not byte-for-byte original HTTP preservation, not a record of
+SMARD's own publication times, not a certified issue-time archive and
+not yet training-ready. No scheduler, ML model, long-range backfill,
+Cloudflare resource, website publication or additional service is active.
+The prior owner-Mac **74/74** tests still pertain to the earlier head;
+the new isolated ingestion tests are not yet run there.
+
+**Next exact action:** on the owner's Mac, fast-forward the draft
+branch, run the now-expected **90 offline Python tests**, and run
+`./.venv/bin/python -m pilot.smard_incremental_ingestion` once.
+Inspect the output receipt metadata, source coverage and nonpublication
+flags. If the public SMARD API is unavailable or has a rate limit, stop
+and report the error. Keep all automation disabled. Do not start a
+full-history backfill until September's original-model fingerprint
+mismatch and allowable source cadence are understood.
