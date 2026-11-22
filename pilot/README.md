@@ -68,6 +68,25 @@ Then visit the loopback URL printed by Streamlit (typically http://localhost:850
 
 **Not a historical forecast-vintage archive:** the current SMARD API can return revised values. The page describes a *historical input preview*; no claims of backtested skill, operational grid risk, a 2026-11-21 model forecast, or daily automatic service are supported.
 
+## Proposed future ingestion cadence (not enabled)
+
+The next GridStress research architecture is documented in
+[`INGESTION_DESIGN.md`](INGESTION_DESIGN.md): **daily** append-only,
+timestamped forecast and observed-data receipts, **weekly** Ridge/model
+refitting after independent scientific validation, and **monthly**
+revision/quality audits. First stage is a manually invoked single-day
+capture only; **no scheduler, data-source overwrite, new cloud bill,
+website publication or merge is authorized**.
+
+The owner's latest Mac verification was **74/74 tests passed**. A
+read-only 2026-09 144-hour/11-filter SMARD source comparison returned
+`ONE_MONTH_REFERENCE_MISMATCH` for **both** saved team hash prefixes;
+the original historical training CSVs remain missing. Consequently
+the eventual historical backfill must use a newly versioned research
+dataset rather than presenting revised source data as the original
+training dataset, and it must not claim the old published model scores
+have been independently reproduced.
+
 ## Recovering original training data: one-month provenance probe (22 Nov 2026)
 
 The owner searched the current Mac's Documents, Desktop, Downloads and
