@@ -147,9 +147,11 @@ class OneMonthProbeTests(unittest.TestCase):
             self.assertFalse(unmatched["safe_to_publish"])
 
     @unittest.skipUnless(PANDAS_AVAILABLE, "pandas not installed in test interpreter")
-    def test_empty_or_incomplete_team_month_is_refused(self):
-        with self.assertRaisesRegex(PilotUnavailable, "does not cover all"):
-            reproduce_frames("2026-09", fake_api(missing=True))
+    def test_missing_one_source_series_does_not_create_fake_values(self):
+        frame, errors = reproduce_frames("2026-09", fake_api(missing=True))
+        self.assertEqual(len(frame), 144)
+        self.assertEqual(int(frame["residual_load"].isna().sum()), 6)
+        self.assertEqual(int(errors["residual_load"].isna().sum()), 6)
 
 
 if __name__ == "__main__":
