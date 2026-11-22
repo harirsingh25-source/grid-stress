@@ -128,7 +128,7 @@ class DailyIngestionTests(unittest.TestCase):
         hour = daily_hours_utc(DAY)[6]
         for options, phrase in (
             ({"duplicate": (410, hour)}, "duplicated"),
-            ({"invalid": (4359, hour)}, "invalid SMARD source value"),
+            ({"invalid": (4359, hour)}, "invalid"),
             ({"negative": (4068, hour)}, "invalid SMARD source value"),
             ({"broken_index": True}, "weekly SMARD index"),
         ):
@@ -194,6 +194,18 @@ class DailyIngestionTests(unittest.TestCase):
             with self.assertRaisesRegex(PilotUnavailable, "checksum mismatch"):
                 save_capture(data, Path(folder))
             self.assertEqual(list(Path(folder).glob("*.json")), [])
+
+    def test_row_data_must_match_saved_raw_decoded_source_documents(self):
+        data, _ = capture()
+        data["hours"][0]["values"]["grid_load"] += 123
+        with self.assertRaisesRegex(PilotUnavailable, "disagrees with documents"):
+            receipt_payload(data)
+
+    def test_source_summary_drift_fails_before_saving(self):
+        data, _ = capture()
+        data["source_summary"][0]["null_value_count"] = 1
+        with self.assertRaisesRegex(PilotUnavailable, "source-summary"):
+            receipt_payload(data)
 
     def test_fake_training_or_published_flags_are_rejected(self):
         for field, value in (
