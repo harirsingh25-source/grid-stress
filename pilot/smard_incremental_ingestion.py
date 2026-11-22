@@ -385,8 +385,10 @@ def save_capture(report: dict, directory: Path = DEFAULT_DIRECTORY) -> dict:
     final = directory / f"smard-current-{day_part}-{stamp}-{sha[:12]}.json"
     temp = directory / f".stage-{day_part}-{stamp}-{sha[:12]}.json"
     fd = None
+    created_temp = False
     try:
         fd = os.open(temp, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        created_temp = True
         with os.fdopen(fd, "wb") as handle:
             fd = None
             handle.write(data)
@@ -400,7 +402,9 @@ def save_capture(report: dict, directory: Path = DEFAULT_DIRECTORY) -> dict:
     finally:
         if fd is not None:
             os.close(fd)
-        temp.unlink(missing_ok=True)
+        # Never delete an existing temp file made by another process/run.
+        if created_temp:
+            temp.unlink(missing_ok=True)
     return {
         "status": "LOCAL_APPEND_ONLY_CAPTURE",
         "day": report["delivery_date"],
