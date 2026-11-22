@@ -254,7 +254,7 @@ def receipt_payload(report: dict) -> bytes:
             raise PilotUnavailable("source document checksum mismatch")
         path = doc.get("path")
         match = re.fullmatch(
-            r"/([0-9]+)/DE/(index_hour|([0-9]+)_DE_hour_([0-9]+))\\.json",
+            r"/([0-9]+)/DE/(index_hour|([0-9]+)_DE_hour_([0-9]+))\.json",
             path if isinstance(path, str) else "",
         )
         if (
